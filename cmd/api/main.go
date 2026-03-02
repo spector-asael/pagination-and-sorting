@@ -62,7 +62,7 @@ func main() {
 	}
 	// release the database resources before exiting
 	// defer db.Close()
-	db.Close()
+	defer db.Close()
 
 	logger.Info("database connection pool established")
 
@@ -71,7 +71,6 @@ func main() {
 		Config: settings,
 		Logger: logger,
 		Models: data.Models{
-		Comments: data.CommentModel{DB: db},
 		Deposits: data.DepositModel{DB: db},
 		Balances: data.BalanceModel{DB: db},
 		History: data.HistoryModel{DB: db},

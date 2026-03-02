@@ -74,7 +74,7 @@ checkhistory:
 	@echo "Testing /history..."
 	curl -X POST http://localhost:4000/v1/history \
 	-H "Content-Type: application/json" \
-	-d '{"user_id":1}'
+	-d '{"user_id":1, "page":1, "page_size":2}'
 
 transfer:
 	@echo "Testing /transfer..."

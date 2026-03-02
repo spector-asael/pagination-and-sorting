@@ -31,12 +31,13 @@ func ValidateHistory(v *validator.Validator, userID int64) {
 }
 
 // GetByUserID returns all ledger entries for a specific user
-func (m HistoryModel) GetByUserID(userID int64) ([]*LedgerEntry, error) {
+func (m HistoryModel) GetByUserID(userID int64, f Filters) ([]*LedgerEntry, Metadata, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	query := `
-		SELECT le.id, le.gl_account_id, le.journal_entry_id, le.debit as deposit, le.credit as credit, le.created_at
+		SELECT COUNT(*) OVER(), le.id, le.gl_account_id, le.journal_entry_id,
+		       le.debit, le.credit, le.created_at
 		FROM ledger_entries le
 		JOIN gl_accounts ga ON le.gl_account_id = ga.id
 		JOIN accounts a ON a.gl_account_id = ga.id
@@ -44,18 +45,23 @@ func (m HistoryModel) GetByUserID(userID int64) ([]*LedgerEntry, error) {
 		JOIN customers c ON ao.customer_id = c.id
 		WHERE c.person_id = $1
 		ORDER BY le.created_at ASC
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := m.DB.QueryContext(ctx, query, userID)
+	rows, err := m.DB.QueryContext(ctx, query, userID, f.limit(), f.offset())
 	if err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 	defer rows.Close()
 
+	totalRecords := 0
 	var entries []*LedgerEntry
+
 	for rows.Next() {
 		var le LedgerEntry
+
 		err := rows.Scan(
+			&totalRecords,
 			&le.ID,
 			&le.GLAccountID,
 			&le.JournalEntryID,
@@ -64,10 +70,9 @@ func (m HistoryModel) GetByUserID(userID int64) ([]*LedgerEntry, error) {
 			&le.CreatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, Metadata{}, err
 		}
 
-		// Set the transaction type based on debit/credit
 		switch {
 		case le.Debit > 0:
 			le.TransactionType = "deposit"
@@ -81,8 +86,11 @@ func (m HistoryModel) GetByUserID(userID int64) ([]*LedgerEntry, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 
-	return entries, nil
+	// Calculate metadata AFTER loop
+	metadata := calculateMetaData(totalRecords, f.Page, f.PageSize)
+
+	return entries, metadata, nil
 }

@@ -3,7 +3,6 @@ package handler
 
 import (
 	"net/http"
-
 	"github.com/spector-asael/banking/internal/data"
 	"github.com/spector-asael/banking/internal/validator"
 )
@@ -15,6 +14,8 @@ func (a *ApplicationDependencies) checkHistoryHandler(
 
 	var input struct {
 		UserID int64 `json:"user_id"`
+		AccountNumber int64 `json:"account_number"`
+		data.Filters 
 	}
 
 	// Decode JSON
@@ -24,16 +25,24 @@ func (a *ApplicationDependencies) checkHistoryHandler(
 		return
 	}
 
+	if input.Page == 0 {
+    input.Page = 1
+	}
+	if input.PageSize == 0 {
+		input.PageSize = 20
+	}
+
 	// Validate input using the model's validator
 	v := validator.New()
 	data.ValidateHistory(v, input.UserID)
+	data.ValidateFilters(v, input.Filters)
 	if !v.IsEmpty() {
 		a.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
 	// Get ledger history
-	history, err := a.Models.History.GetByUserID(input.UserID)
+	history, metadata, err := a.Models.History.GetByUserID(input.UserID, input.Filters)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
@@ -43,7 +52,7 @@ func (a *ApplicationDependencies) checkHistoryHandler(
 	err = a.writeJSON(
 		w,
 		http.StatusOK,
-		envelope{"history": history},
+		envelope{"history": history, "@metadata": metadata},
 		nil,
 	)
 	if err != nil {
