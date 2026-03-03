@@ -5,8 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
-
 	"github.com/spector-asael/banking/internal/validator"
+	"fmt"
 )
 
 // LedgerEntry represents a single ledger entry for a user.
@@ -35,18 +35,25 @@ func (m HistoryModel) GetByUserID(userID int64, f Filters) ([]*LedgerEntry, Meta
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	query := `
-		SELECT COUNT(*) OVER(), le.id, le.gl_account_id, le.journal_entry_id,
-		       le.debit, le.credit, le.created_at
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) OVER(),
+			le.id,
+			le.gl_account_id,
+			le.journal_entry_id,
+			le.debit,
+			le.credit,
+			le.created_at
 		FROM ledger_entries le
 		JOIN gl_accounts ga ON le.gl_account_id = ga.id
 		JOIN accounts a ON a.gl_account_id = ga.id
 		JOIN account_ownerships ao ON a.id = ao.account_id
 		JOIN customers c ON ao.customer_id = c.id
 		WHERE c.person_id = $1
-		ORDER BY le.created_at ASC
-		LIMIT $2 OFFSET $3
-	`
+		ORDER BY %s %s, le.id ASC
+		LIMIT $2 OFFSET $3`,
+		f.sortColumn(),
+		f.sortDirection(),
+	)
 
 	rows, err := m.DB.QueryContext(ctx, query, userID, f.limit(), f.offset())
 	if err != nil {

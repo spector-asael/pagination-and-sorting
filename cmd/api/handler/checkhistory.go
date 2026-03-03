@@ -29,9 +29,19 @@ func (a *ApplicationDependencies) checkHistoryHandler(
     input.Page = 1
 	}
 	if input.PageSize == 0 {
-		input.PageSize = 20
+		input.PageSize = 5
 	}
 
+	input.SortSafeList = []string{
+		"created_at",
+		"-created_at",
+		"id",
+		"-id",
+		"debit",
+		"-debit",
+		"credit",
+		"-credit",
+	}
 	// Validate input using the model's validator
 	v := validator.New()
 	data.ValidateHistory(v, input.UserID)

@@ -70,11 +70,48 @@ deposit2:
 	-H "Content-Type: application/json" \
 	-d '{"user_id":1,"bank_number":111111,"deposit_amount":500 75}'
 
-checkhistory:
+# checkhistory with different sorting options
+checkhistory-dsc:
 	@echo "Testing /history..."
 	curl -X POST http://localhost:4000/v1/history \
 	-H "Content-Type: application/json" \
-	-d '{"user_id":1, "page":1, "page_size":2}'
+	-d '{"user_id":1, "page":1, "page_size":4, "sort": "-created_at"}'
+
+checkhistory-asc:
+	@echo "Testing /history..."
+	curl -X POST http://localhost:4000/v1/history \
+	-H "Content-Type: application/json" \
+	-d '{"user_id":1, "page":10, "page_size":4, "sort": "created_at"}'
+
+checkhistory-debit-dsc:
+	@echo "Testing /history - largest deposits first..."
+	curl -X POST http://localhost:4000/v1/history \
+	-H "Content-Type: application/json" \
+	-d '{"user_id":1,"page":1,"page_size":4,"sort":"-debit"}'
+
+checkhistory-debit-asc:
+	@echo "Testing /history - smallest deposits first..."
+	curl -X POST http://localhost:4000/v1/history \
+	-H "Content-Type: application/json" \
+	-d '{"user_id":1,"page":1,"page_size":4,"sort":"debit"}'
+
+checkhistory-credit-dsc:
+	@echo "Testing /history - largest withdrawals first..."
+	curl -X POST http://localhost:4000/v1/history \
+	-H "Content-Type: application/json" \
+	-d '{"user_id":1,"page":1,"page_size":4,"sort":"-credit"}'
+
+checkhistory-credit-asc:
+	@echo "Testing /history - smallest withdrawals first..."
+	curl -X POST http://localhost:4000/v1/history \
+	-H "Content-Type: application/json" \
+	-d '{"user_id":1,"page":1,"page_size":4,"sort":"credit"}'
+
+checkhistory-err: 
+	@echo "Testing /history with invalid sort..."
+	curl -X POST http://localhost:4000/v1/history \
+	-H "Content-Type: application/json" \
+	-d '{"user_id":1, "page":1, "page_size":4, "sort": "-invalid_field"}'
 
 transfer:
 	@echo "Testing /transfer..."

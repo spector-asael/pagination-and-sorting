@@ -3,13 +3,14 @@ package data
 
 import (
 	"github.com/spector-asael/banking/internal/validator"
+    "strings"
 )
 
 type Filters struct {
 	Page int `json:"page"`
 	PageSize int `json:"page_size"`
     Sort string `json:"sort"`
-    SortSafelist []string
+    SortSafeList []string
 }
 
 type Metadata struct {
@@ -26,14 +27,21 @@ func ValidateFilters(v *validator.Validator, f Filters) {
    v.Check(f.Page <= 500, "page", "must be a maximum of 500")
    v.Check(f.PageSize > 0, "page_size", "must be greater than zero")
    v.Check(f.PageSize <= 100, "page_size", "must be a maximum of 100")
-   
-}
 
+   v.Check(validator.PermittedValue(f.Sort, f.SortSafeList...), "sort","invalid sort value")
+}
 // calculate how many records to send back
 func (f Filters) limit() int {
     return f.PageSize
 }
 
+// Get the sort order
+func (f Filters) sortDirection() string {
+      if strings.HasPrefix(f.Sort, "-") {
+          return "DESC"
+      }
+      return "ASC"
+}
 
 // calculate the offset so that we remember how many records have
 // been sent and how many remain to be sent
@@ -55,4 +63,16 @@ func calculateMetaData(totalRecords int, currentPage int, pageSize int) Metadata
         TotalRecords: totalRecords,
    }
     
+}
+
+// Implement the sorting feature
+func (f Filters) sortColumn() string {
+    for _, safeValue := range f.SortSafeList {
+        if f.Sort == safeValue {
+            return strings.TrimPrefix(f.Sort, "-")
+        }
+    }
+   // don't allow the operation to continue
+   // if case of SQL injection attack
+   panic("unsafe sort parameter: " + f.Sort)
 }
