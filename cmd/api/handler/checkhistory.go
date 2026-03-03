@@ -35,8 +35,6 @@ func (a *ApplicationDependencies) checkHistoryHandler(
 	input.SortSafeList = []string{
 		"created_at",
 		"-created_at",
-		"id",
-		"-id",
 		"debit",
 		"-debit",
 		"credit",
